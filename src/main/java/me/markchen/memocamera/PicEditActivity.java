@@ -9,11 +9,15 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import java.util.Collection;
 
@@ -22,14 +26,12 @@ import me.markchen.util.Log;
 
 public class PicEditActivity extends Activity {
 
-    boolean isEditing;
     boolean isTextEditing;
     private float Text_X;
     private float Text_Y;
     private ImageView mImageView;
     private Bitmap mBitmap;
     private LinearLayout mLin_edit;
-    private LinearLayout mLin_text_edit;
     private EditText mEditText;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,12 +39,13 @@ public class PicEditActivity extends Activity {
         setContentView(R.layout.activity_pic_edit);
         mImageView = (ImageView)findViewById(R.id.img_edit);
         mLin_edit = (LinearLayout)findViewById(R.id.Lin_edit);
-        mLin_text_edit = (LinearLayout)findViewById(R.id.Lin_text_edit);
         mEditText = (EditText)findViewById(R.id.edit_text);
-        isEditing = false;
         isTextEditing = false;
         mImageView.setOnClickListener(onClickListener);
         mImageView.setOnTouchListener(onTouchListener);
+        findViewById(R.id.btn_clip).setOnClickListener(onClickListener);
+        findViewById(R.id.btn_pen).setOnClickListener(onClickListener);
+        mEditText.setOnEditorActionListener(onEditorActionListener);
         Bundle bundle = getIntent().getExtras();
         byte[] data = bundle.getByteArray("photo");
         mBitmap = Bytes2Bimap(data);
@@ -58,8 +61,22 @@ public class PicEditActivity extends Activity {
                         Log.i("show text editing...");
                         Text_X = event.getRawX();
                         Text_Y = event.getRawY();
+                        Log.i(Text_X + ":" + Text_Y);
+                        mEditText.setVisibility(View.VISIBLE);
                     }
                     break;
+            }
+            return false;
+        }
+    };
+    private TextView.OnEditorActionListener onEditorActionListener = new TextView.OnEditorActionListener() {
+        @Override
+        public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+            if (actionId == EditorInfo.IME_ACTION_DONE){
+                Log.i("drawing...");
+                drawNewBitmap(v.getText().toString().trim());
+                mEditText.setVisibility(View.GONE);
+                isTextEditing = false;
             }
             return false;
         }
@@ -70,32 +87,27 @@ public class PicEditActivity extends Activity {
             switch (v.getId()){
                 case R.id.img_edit:
                     Log.i("img_edit clicked...");
-                    if(!isEditing){
-                        if(mLin_edit.getVisibility() == View.VISIBLE){
-                            mLin_edit.setVisibility(View.GONE);
-                        }else {
-                            mLin_edit.setVisibility(View.VISIBLE);
-                        }
-                    }else{
-                        mLin_text_edit.setVisibility(View.VISIBLE);
-                        Log.i("show mLin_text_edit...");
-                    }
+
+                    break;
+                case R.id.btn_clip:
+                    Log.i("btn_clip clicked...");
                     break;
                 case R.id.btn_pen:
                     Log.i("btn_pen clicked...");
-                    isEditing = true;
                     isTextEditing = true;
-                    break;
-                case R.id.btn_text_edit_save:
-                    String content = mEditText.getText().toString().trim();
-                    drawNewBitmap(content);
-                    isTextEditing = false;
-                    isEditing = false;
-                    mLin_text_edit.setVisibility(View.GONE);
                     break;
             }
         }
     };
+    @Override
+    public void onBackPressed(){
+        if (isTextEditing){
+            mEditText.setVisibility(View.GONE);
+        }else{
+            super.onBackPressed();
+        }
+
+    }
     public Bitmap Bytes2Bimap(byte[] b) {
         if (b.length != 0) {
             return BitmapFactory.decodeByteArray(b, 0, b.length);
@@ -121,7 +133,7 @@ public class PicEditActivity extends Activity {
         textPaint.setTextSize(100.0f);
         textPaint.setTypeface(Typeface.DEFAULT_BOLD);
         textPaint.setColor(Color.RED);
-        canvas.drawText(str, 100,100,textPaint);
+        canvas.drawText(str, Text_X,Text_Y,textPaint);
         canvas.save(Canvas.ALL_SAVE_FLAG);
         canvas.restore();
         mImageView.setImageBitmap(icon);
